@@ -1,0 +1,6 @@
+node_modules/
+ngrok.exe
+cloudflared.exe
+server_log.txt
+*.zip
+.env

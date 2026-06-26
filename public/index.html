@@ -1,0 +1,215 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>毛泽东</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  font-family: 'PingFang SC','Microsoft YaHei','Hiragino Sans GB',sans-serif;
+  background:#fff;
+  height:100dvh;
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+}
+.header {
+  background:#cc0000;
+  padding:8px 20px;
+  text-align:center;
+  flex-shrink:0;
+}
+.header h1 {
+  color:#fff;
+  font-size:18px;
+  letter-spacing:6px;
+  font-weight:900;
+}
+.chat {
+  flex:1;
+  overflow-y:auto;
+  padding:20px 16px;
+  display:flex;
+  flex-direction:column;
+  gap:16px;
+  background:#fff;
+}
+.msg {
+  max-width:88%;
+  padding:0;
+  line-height:2;
+  font-size:19px;
+  font-weight:500;
+  word-break:break-word;
+}
+.msg.user { align-self:flex-end; color:#cc0000; }
+.msg.mao { align-self:flex-start; color:#111; }
+.msg .time {
+  font-size:12px;
+  color:#bbb;
+  font-weight:400;
+  margin-top:10px;
+  display:block;
+}
+.msg.user .time { color:#e0a0a0; }
+.input-area {
+  padding:12px 16px 16px;
+  display:flex;
+  gap:10px;
+  flex-shrink:0;
+}
+.input-area input {
+  flex:1;
+  padding:14px 20px;
+  border:1px solid #e0e0e0;
+  border-radius:24px;
+  background:#f5f5f5;
+  color:#222;
+  font-size:18px;
+  font-weight:500;
+  outline:none;
+  -webkit-appearance:none;
+}
+.input-area input:focus { border-color:#cc0000; background:#fff; }
+.input-area input::placeholder { color:#ccc; font-weight:400; }
+.input-area button {
+  padding:14px 24px;
+  background:#cc0000;
+  color:#fff;
+  border:none;
+  border-radius:24px;
+  font-size:18px;
+  font-weight:700;
+  cursor:pointer;
+  white-space:nowrap;
+}
+.input-area button:active { background:#aa0000; }
+.input-area button:disabled { opacity:0.4; }
+
+/* lock screen */
+.lock {
+  position:fixed;
+  top:0;left:0;right:0;bottom:0;
+  background:#fff;
+  z-index:999;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:24px;
+}
+.lock.hidden { display:none; }
+.lock h2 {
+  font-size:22px;
+  color:#cc0000;
+  letter-spacing:4px;
+  font-weight:900;
+}
+.lock input {
+  width:200px;
+  padding:14px 20px;
+  border:2px solid #ddd;
+  border-radius:12px;
+  text-align:center;
+  font-size:24px;
+  font-weight:700;
+  letter-spacing:8px;
+  outline:none;
+  -webkit-appearance:none;
+  -webkit-text-security:disc;
+}
+.lock input:focus { border-color:#cc0000; }
+.lock button {
+  padding:14px 48px;
+  background:#cc0000;
+  color:#fff;
+  border:none;
+  border-radius:24px;
+  font-size:18px;
+  font-weight:700;
+  cursor:pointer;
+}
+.lock button:active { background:#aa0000; }
+.lock .hint { color:#ccc; font-size:14px; }
+</style>
+</head>
+<body>
+
+<div class="lock" id="lock">
+  <h2>毛泽东</h2>
+  <input id="pwd" type="password" inputmode="numeric" maxlength="4" placeholder="密码" autofocus>
+  <button onclick="unlock()">进入</button>
+  <p style="text-align:center;max-width:320px;line-height:2;font-size:17px;font-weight:500;color:#444;padding:0 8px;">以《毛泽东选集》一至七卷全文为本，你问什么，我就从原著里找什么。实事求是，不编不造。</p><span class="hint">请输入四位数字密码</span>
+</div>
+
+<div class="header"><h1>毛泽东</h1></div>
+<div class="chat" id="chat">
+  <div class="msg mao">
+    同志们好。有什么问题，提出来，我们一起研究。
+    <span class="time">刚刚</span>
+  </div>
+</div>
+<div class="input-area">
+  <input id="input" type="text" placeholder="说点什么……">
+  <button id="send" onclick="sendMsg()">发送</button>
+</div>
+
+<script>
+const chat=document.getElementById('chat');
+const input=document.getElementById('input');
+const sendBtn=document.getElementById('send');
+const lockDiv=document.getElementById('lock');
+const pwdInput=document.getElementById('pwd');
+let history=[];
+
+// check if already unlocked this session
+if(sessionStorage.getItem('mao_unlocked')==='1949') lockDiv.classList.add('hidden');
+
+pwdInput.addEventListener('keydown',function(e){ if(e.key==='Enter') unlock(); });
+
+function unlock(){
+  if(pwdInput.value==='1949'){
+    sessionStorage.setItem('mao_unlocked','1949');
+    lockDiv.classList.add('hidden');
+  } else {
+    pwdInput.value='';
+    pwdInput.placeholder='不对，再试';
+  }
+}
+
+input.addEventListener('keydown',function(e){ if(e.key==='Enter') sendMsg(); });
+
+async function sendMsg(){
+  var msg=input.value.trim();
+  if(!msg) return;
+  addMsg(msg,'user');
+  input.value='';
+  sendBtn.disabled=true;
+  try{
+    var res=await fetch('/api/chat',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({message:msg,history:history})
+    });
+    var data=await res.json();
+    if(data.error) addMsg('出了点问题：'+data.error,'mao');
+    else{
+      addMsg(data.reply,'mao');
+      history.push({role:'user',content:msg},{role:'assistant',content:data.reply});
+      if(history.length>12) history=history.slice(-12);
+    }
+  }catch(e){ addMsg('连接失败，请稍后再试。','mao'); }
+  sendBtn.disabled=false;
+}
+
+function addMsg(text,cls){
+  var div=document.createElement('div');
+  div.className='msg '+cls;
+  div.innerHTML=text.replace(/\n/g,'<br>')+'<span class="time">刚刚</span>';
+  chat.appendChild(div);
+  chat.scrollTop=chat.scrollHeight;
+}
+</script>
+</body>
+</html>
